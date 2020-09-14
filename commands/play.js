@@ -1,4 +1,5 @@
 const ytdl = require("ytdl-core");
+const play = require("../util/playNow");
 
 module.exports = {
   name: "play",
@@ -24,7 +25,7 @@ module.exports = {
       const songInfo = await ytdl.getInfo(args[1]);
       const song = {
         title: songInfo.videoDetails.title,
-        url: songInfo.videoDetails.video_url
+        url: songInfo.videoDetails.video_url,
       };
 
       if (!serverQueue) {
@@ -34,7 +35,7 @@ module.exports = {
           connection: null,
           songs: [],
           volume: 5,
-          playing: true
+          playing: true,
         };
 
         queue.set(message.guild.id, queueContruct);
@@ -44,7 +45,7 @@ module.exports = {
         try {
           var connection = await voiceChannel.join();
           queueContruct.connection = connection;
-          this.play(message, queueContruct.songs[0]);
+          play(message, queueContruct.songs[0]);
         } catch (err) {
           console.log(err);
           queue.delete(message.guild.id);
@@ -61,26 +62,4 @@ module.exports = {
       message.channel.send(error.message);
     }
   },
-
-  play(message, song) {
-    const queue = message.client.queue;
-    const guild = message.guild;
-    const serverQueue = queue.get(message.guild.id);
-
-    if (!song) {
-      serverQueue.voiceChannel.leave();
-      queue.delete(guild.id);
-      return;
-    }
-
-    const dispatcher = serverQueue.connection
-      .play(ytdl(song.url))
-      .on("finish", () => {
-        serverQueue.songs.shift();
-        this.play(message, serverQueue.songs[0]);
-      })
-      .on("error", error => console.error(error));
-    dispatcher.setVolumeLogarithmic(serverQueue.volume / 5);
-    serverQueue.textChannel.send(`Start playing: **${song.title}**`);
-  }
 };
